@@ -1,3 +1,4 @@
+import os
 from matplotlib import pyplot as plt
 import torch
 
@@ -17,6 +18,8 @@ def plot_comparison(images: list[torch.Tensor], labels: list[str], save_path: st
     _ = plt.tight_layout()
 
     if save_path:
+        # Create directory if it doesn't exist
+        os.makedirs(os.path.dirname(save_path), exist_ok=True)
         plt.savefig(save_path, dpi=300, bbox_inches='tight')
 
     _ = plt.show()
@@ -37,6 +40,8 @@ def plot_curves(metric_dict: dict[str, list[float]], save_path: str | None = Non
     _ = plt.tight_layout()
 
     if save_path:
+        # Create directory if it doesn't exist
+        os.makedirs(os.path.dirname(save_path), exist_ok=True)
         plt.savefig(save_path, dpi=300, bbox_inches='tight')
 
     _ = plt.show()
