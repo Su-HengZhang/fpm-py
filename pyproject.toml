@@ -16,6 +16,7 @@ authors = [
 dependencies = [
     "matplotlib>=3.10.7",
     "numpy>=2.3.4",
+    "scipy>=1.16.3",
     "seaborn>=0.13.2",
     "torch>=2.9.0",
     "torchvision>=0.24.0",
@@ -29,6 +30,7 @@ packages = ["src/ptych"]
 reportMissingTypeStubs = false
 reportUnknownMemberType = false
 reportUnusedCallResult = false
+reportUnknownArgumentType = "none"
 
 [dependency-groups]
 dev = [
