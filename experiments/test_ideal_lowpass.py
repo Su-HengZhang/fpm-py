@@ -1,6 +1,15 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
+# 设置中文字体
+plt.rcParams["font.sans-serif"] = [
+    "PingFang SC",
+    "Hiragino Sans GB",
+    "Microsoft YaHei",
+    "SimHei",
+]
+plt.rcParams["axes.unicode_minus"] = False
+
 
 def ideal_lowpass_filter(shape, cutoff_frequency):
     """
@@ -17,9 +26,9 @@ def ideal_lowpass_filter(shape, cutoff_frequency):
     crow, ccol = rows // 2, cols // 2  # 中心点坐标
 
     # 创建坐标网格
-    x = np.arange(cols) - ccol
-    y = np.arange(rows) - crow
-    X, Y = np.meshgrid(x, y)
+    y = np.arange(cols) - ccol
+    x = np.arange(rows) - crow
+    Y, X = np.meshgrid(y, x)
 
     # 计算每个点到中心的距离
     D = np.sqrt(X**2 + Y**2)
@@ -61,6 +70,8 @@ def apply_lowpass_filter(image, cutoff_frequency):
 
 # 示例使用
 if __name__ == "__main__":
+    print(ideal_lowpass_filter((6, 6), 1))
+
     # 创建测试图像：带噪声的方波
     size = 256
     image = np.zeros((size, size))
