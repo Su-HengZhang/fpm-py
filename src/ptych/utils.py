@@ -1,37 +1,10 @@
 """
 傅里叶叠层显微术(Fourier Ptychography, FPM)工具函数
 
-本模块为FPM实现提供辅助函数，
-主要用于设备选择和配置。
+本模块为FPM实现提供辅助函数
 """
 
 import numpy as np
-import torch  # PyTorch张量操作库
-
-
-def get_default_device() -> torch.device:
-    """
-    自动选择最佳可用计算设备。
-
-    此函数按以下顺序检查可用的硬件加速器：
-    1. CUDA（NVIDIA GPU）- 大多数深度学习任务的最佳性能
-    2. MPS（Apple Metal Performance Shaders）- 适用于Apple Silicon设备
-    3. CPU - 当没有硬件加速可用时的回退选项
-
-    返回:
-        torch.device: 最佳可用计算设备
-    """
-
-    # 检查CUDA（NVIDIA GPU）是否可用
-    if torch.cuda.is_available():
-        return torch.device("cuda")
-
-    # 检查MPS（Apple Metal）是否可用且已正确配置
-    if torch.backends.mps.is_available() and torch.backends.mps.is_built():
-        return torch.device("mps")
-
-    # 如果没有硬件加速可用，则回退到CPU
-    return torch.device("cpu")
 
 
 def image_center_region(image, roi_rows=None, roi_cols=None):
@@ -109,7 +82,7 @@ def image_center_region(image, roi_rows=None, roi_cols=None):
     return result
 
 
-def ideal_lowpass_filter(shape, cutoff_frequency):
+def ideal_lowpass_filter(shape, cutoff_frequency, freq_shift):
     """
     创建理想低通滤波器
 
@@ -120,18 +93,47 @@ def ideal_lowpass_filter(shape, cutoff_frequency):
     返回:
         filter: ndarray, 理想低通滤波器矩阵
     """
+    # 低通滤波器的行列数
     rows, cols = shape
-    crow, ccol = rows // 2, cols // 2  # 中心点坐标
-
+    # 零频的行列索引
+    crow, ccol = rows // 2, cols // 2
+    # 滤波器中心频率偏移量
+    u_shift, v_shift = freq_shift
     # 创建坐标网格
-    x = np.arange(cols) - ccol
-    y = np.arange(rows) - crow
-    X, Y = np.meshgrid(x, y)
+    u = np.arange(rows) - crow - u_shift
+    v = np.arange(cols) - ccol - v_shift
+    U, V = np.meshgrid(u, v, indexing="ij")
 
     # 计算每个点到中心的距离
-    D = np.sqrt(X**2 + Y**2)
+    D = np.sqrt(U**2 + V**2)
 
     # 创建理想低通滤波器：距离小于截止频率的为1，否则为0
     filter_mask = (D <= cutoff_frequency).astype(float)
 
     return filter_mask
+
+
+def led_array_dir_cos(led_rows, led_cols, height_led2sample):
+    """
+    计算LED阵列的方向余弦
+
+    参数:
+        led_rows: int, LED矩阵的行数
+        led_cols: int, LED矩阵的列数
+        height_led2sample: float, LED灯板到样本的距离(以led_d为单位)
+
+    返回:
+        dir_cos: ndarray, LED阵列的方向余弦矩阵, 形状为 (led_rows, led_cols, 2)
+    """
+    # 构建LED阵列的坐标网格
+    m = np.arange(led_rows) - led_rows // 2
+    n = np.arange(led_cols) - led_cols // 2
+    M, N = np.meshgrid(m, n, indexing="ij")
+
+    # 初始化方向余弦矩阵
+    dir_cos = np.zeros((led_rows, led_cols, 2))
+    # 计算LED阵列沿行方向的方向余弦
+    dir_cos[:, :, 0] = M / np.sqrt(M**2 + N**2 + height_led2sample**2)
+    # 计算LED阵列沿列方向的方向余弦
+    dir_cos[:, :, 1] = N / np.sqrt(M**2 + N**2 + height_led2sample**2)
+    return dir_cos
