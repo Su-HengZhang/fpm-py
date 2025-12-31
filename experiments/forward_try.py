@@ -1,8 +1,8 @@
-import time
-from scipy.io import loadmat
 import numpy as np
-from numpy import fft
 import matplotlib.pyplot as plt
+
+from numpy import fft
+from scipy.io import loadmat
 from ptych.utils import image_center_region
 from ptych.utils import ideal_lowpass_filter
 from ptych.utils import led_array_dir_cos
@@ -27,26 +27,16 @@ ideal_spectrum_interval = 1 / (ideal_image_interval * ideal_rows)
 ideal_image_fourier = fft.fftshift(fft.fft2(fft.ifftshift(ideal_image)))
 
 ################################################################################
-# 实际物镜的参数
-################################################################################
-# 实际物镜的数值孔径
-numerical_aperture = 0.1
-# 准单色光照明光波长
-wavelength = 0.633e-3  # 以mm为单位
-# 实际物镜有限孔径对应的截止频率
-cutoff_freq = numerical_aperture / wavelength
-cutoff_freq = cutoff_freq / ideal_spectrum_interval  # 以理想像的频谱间隔为单位
-print(f"实际物镜有限孔径对应的截止频率为: {cutoff_freq}")
-
-################################################################################
 # LED阵列照明的参数
 ################################################################################
+# LED准单色光照明, 中心光波长
+wavelength = 0.633e-3  # 以mm为单位
 # LED 矩阵的行列数目(奇数行，奇数列)
-led_rows, led_cols = 7, 7
+led_rows, led_cols = 5, 5
 # LED阵列两灯之间的间隔
 led_d = 3.133  # 以mm为单位
 # LED灯板到样本的距离
-distance_led2sample = 62.0  # 以mm为单位
+distance_led2sample = 62.66  # 以mm为单位
 distance_led2sample = distance_led2sample / led_d  # 以led_d为单位
 # LED的方向余弦矩阵
 led_dir_cos = led_array_dir_cos(led_rows, led_cols, distance_led2sample)
@@ -54,7 +44,36 @@ led_dir_cos = led_array_dir_cos(led_rows, led_cols, distance_led2sample)
 led_frequency = led_dir_cos / wavelength
 led_frequency = led_frequency / ideal_spectrum_interval  # 以理想像的频谱间隔为单位
 # LED照明最大频率间隔, 应为从中心LED到四邻接LED
-print(f"LED照明最大频率间隔为: {led_frequency[led_rows // 2 + 1, led_cols // 2, 0]}")
+print(
+    f"LED照明最大频率间隔为: {led_frequency[led_rows // 2 + 1, led_cols // 2, 0]:.1f}"
+)
+# LED照明最大频率, 应为4个角落LED的照明
+print(f"LED照明最高频率为: sqrt(2)*{led_frequency[-1, -1, 0]:.1f}")
+
+################################################################################
+# 实际物镜的参数
+################################################################################
+# 实际物镜的数值孔径
+numerical_aperture = 0.1
+# 实际物镜有限孔径对应的截止频率
+cutoff_freq = numerical_aperture / wavelength
+# 获取低分辨率图像, 要求实际相机的像素
+pixel_size = 1000 / (2 * cutoff_freq)
+print(f"获取低分辨率图像, 要求实际相机的像素大小最大值: {pixel_size:.1f} um")
+cutoff_freq = cutoff_freq / ideal_spectrum_interval  # 以理想像的频谱间隔为单位
+print(f"实际物镜有限孔径对应的截止频率为: {cutoff_freq:.1f}")
+
+################################################################################
+# 傅里叶叠层成像FPM分辨率
+################################################################################
+# 傅里叶叠层成像的实际截止频率
+effective_cutoff_freq = cutoff_freq + np.sqrt(2) * np.abs(led_frequency[0, 0, 0])
+print(f"傅里叶叠层成像的实际截止频率为: {effective_cutoff_freq:.1f}")
+
+#  傅里叶叠层成像空间分辨率(以um为单位)
+space_resolution = 1000 / (2 * effective_cutoff_freq * ideal_spectrum_interval)
+print(f"傅里叶叠层成像空间分辨率: {space_resolution:.3f} um")
+
 
 ################################################################################
 # 显示
@@ -83,6 +102,8 @@ im_real = axs[1, 1].imshow(ideal_image, cmap="gray")
 axs[1, 1].axis("off")
 axs[1, 1].set_title("Real Image")
 
+# 初始化real image存储
+intensity_image_list = np.zeros((led_rows, led_cols, ideal_rows, ideal_cols))
 # ----------- 更新动态图像 -----------#
 for m in range(led_rows):
     for n in range(led_cols):
@@ -96,15 +117,21 @@ for m in range(led_rows):
         real_image_fourier = ideal_image_fourier * lowpass_filter
         # 逆傅里叶变换, 得到实际像
         real_image = fft.fftshift(fft.ifft2(fft.ifftshift(real_image_fourier)))
+        real_image = np.abs(real_image) ** 2
+        # 存储real image
+        intensity_image_list[m, n, :, :] = real_image
 
         # 显示滤波后的频谱
         im_spec.set_data(
             np.log(np.abs(ideal_image_fourier) + 1) * (0.2 + lowpass_filter)
         )
         # 显示real image
-        im_real.set_data(np.abs(real_image))
+        im_real.set_data(real_image)
 
-        plt.pause(0.5)
-
+        plt.pause(0.1)
+np.savez(
+    f"data/intensity_image_list_{led_rows}x{led_cols}",
+    intensity_image_list=intensity_image_list,
+)
 plt.ioff()
 plt.show()

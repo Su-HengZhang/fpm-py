@@ -137,3 +137,40 @@ def led_array_dir_cos(led_rows, led_cols, height_led2sample):
     # 计算LED阵列沿列方向的方向余弦
     dir_cos[:, :, 1] = N / np.sqrt(M**2 + N**2 + height_led2sample**2)
     return dir_cos
+
+
+def spiral_indices_from_center(shape):
+    """
+    从中心开始，按顺时针螺旋顺序返回矩阵的所有索引。
+
+    参数:
+        shape: tuple, 矩阵的形状 (rows, cols)
+
+    返回:
+        indices: list of tuples, 按顺时针螺旋顺序排列的索引列表
+    """
+    n_rows, n_cols = shape
+    assert n_rows % 2 == 1 and n_cols % 2 == 1, "矩阵行列必须都是奇数"
+
+    center_r, center_c = n_rows // 2, n_cols // 2
+    indices = [(center_r, center_c)]
+
+    # 方向：右，下，左，上
+    directions = [(0, 1), (1, 0), (0, -1), (-1, 0)]
+
+    step = 1
+    r, c = center_r, center_c
+
+    while len(indices) < n_rows * n_cols:
+        for d in range(4):
+            dr, dc = directions[d]
+            # 每两个方向步长相同
+            for _ in range(step):
+                r += dr
+                c += dc
+                if 0 <= r < n_rows and 0 <= c < n_cols:
+                    indices.append((r, c))
+            if d % 2 == 1:
+                step += 1
+
+    return indices
